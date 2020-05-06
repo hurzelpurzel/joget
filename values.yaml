@@ -23,6 +23,9 @@ serviceAccount:
   # If not set and create is true, a name is generated using the fullname template
   name: ""
 
+secrets:
+  dbPassword: "geheim" 
+
 podAnnotations: {}
 
 podSecurityContext: {}
@@ -37,8 +40,8 @@ securityContext: {}
   # runAsUser: 1000
 
 service:
-  type: ClusterIP
-  port: 80
+  type: NodePort
+  port: 8080
 
 ingress:
   enabled: false

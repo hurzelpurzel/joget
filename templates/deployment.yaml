@@ -1,61 +1,43 @@
-apiVersion: apps/v1
+---
+apiVersion: apps/v1beta2 # for versions before 1.8.0 use apps/v1beta1
 kind: Deployment
 metadata:
-  name: {{ include "joget.fullname" . }}
-  labels:
-    {{- include "joget.labels" . | nindent 4 }}
+ name: joget
 spec:
-{{- if not .Values.autoscaling.enabled }}
-  replicas: {{ .Values.replicaCount }}
-{{- end }}
-  selector:
-    matchLabels:
-      {{- include "joget.selectorLabels" . | nindent 6 }}
-  template:
-    metadata:
-    {{- with .Values.podAnnotations }}
-      annotations:
-        {{- toYaml . | nindent 8 }}
-    {{- end }}
-      labels:
-        {{- include "joget.selectorLabels" . | nindent 8 }}
-    spec:
-      {{- with .Values.imagePullSecrets }}
-      imagePullSecrets:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
-      serviceAccountName: {{ include "joget.serviceAccountName" . }}
-      securityContext:
-        {{- toYaml .Values.podSecurityContext | nindent 8 }}
-      containers:
-        - name: {{ .Chart.Name }}
-          securityContext:
-            {{- toYaml .Values.securityContext | nindent 12 }}
-          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
-          imagePullPolicy: {{ .Values.image.pullPolicy }}
-          ports:
-            - name: http
-              containerPort: 80
-              protocol: TCP
-          livenessProbe:
-            httpGet:
-              path: /
-              port: http
-          readinessProbe:
-            httpGet:
-              path: /
-              port: http
-          resources:
-            {{- toYaml .Values.resources | nindent 12 }}
-      {{- with .Values.nodeSelector }}
-      nodeSelector:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
-      {{- with .Values.affinity }}
-      affinity:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
-      {{- with .Values.tolerations }}
-      tolerations:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
+ selector:
+   matchLabels:
+     app: joget
+ strategy:
+   type: Recreate
+ template:
+   metadata:
+     labels:
+       app: joget
+   spec:
+     containers:
+     - image: jogetworkflow/joget-enterprise
+       name: joget
+       resources:
+          requests:
+            cpu: "0.5"
+            memory: "500Mi"
+       env:
+       - name: MYSQL_HOST
+         value: "${MYSQL_SERVICE_HOST}"
+       - name: MYSQL_PASSWORD
+         valueFrom:
+          secretKeyRef:
+            name: {{ include "joget.fullname" . }}-db
+            key: dbPassword
+       - name: MYSQL_PORT
+         value: "${MYSQL_SERVICE_PORT}"
+       ports:
+       - containerPort: 8080
+         name: joget
+       volumeMounts:
+       - name: joget-persistent-storage
+         mountPath: /opt/joget/wflow
+     volumes:
+     - name: joget-persistent-storage
+       persistentVolumeClaim:
+         claimName: joget-pv-claim
